@@ -759,6 +759,13 @@ struct ItemTemplate
                GetSubClass() == ITEM_SUBCLASS_WEAPON_CROSSBOW;
     }
 
+	bool IsRangedGetInventoryType() const
+	{
+		return GetInventoryType() == INVTYPE_RANGED ||
+			   GetInventoryType() == INVTYPE_THROWN ||
+			   GetInventoryType() == INVTYPE_RANGEDRIGHT;
+	}
+	
     char const* GetDefaultLocaleName() const;
     uint32 GetArmor(uint32 itemLevel) const;
     void GetDamage(uint32 itemLevel, float& minDamage, float& maxDamage) const;
