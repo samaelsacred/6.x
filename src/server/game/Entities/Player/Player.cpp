@@ -17293,7 +17293,7 @@ bool Player::LoadFromDB(ObjectGuid guid, SQLQueryHolder *holder)
 
     _LoadTalents(holder->GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_TALENTS));
     _LoadSpells(holder->GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_SPELLS));
-    _LoadToys(GetSession()->GetAccountToys());
+    GetSession()->GetCollectionMgr()->LoadToys();
 
     LearnSpecializationSpells();
 
@@ -18434,23 +18434,6 @@ void Player::_LoadSpells(PreparedQueryResult result)
     }
 }
 
-void Player::_LoadToys(ToyBoxContainer const& toys)
-{
-    for (auto const& t : toys)
-        AddDynamicValue(PLAYER_DYNAMIC_FIELD_TOYS, t.first);
-}
-
-bool Player::AddToy(uint32 itemId, bool isFavourite /*= false*/)
-{
-    if (GetSession()->UpdateAccountToys(itemId, isFavourite))
-    {
-        AddDynamicValue(PLAYER_DYNAMIC_FIELD_TOYS, itemId);
-        return true;
-    }
-
-    return false;
-}
-
 void Player::_LoadGroup(PreparedQueryResult result)
 {
     //QueryResult* result = CharacterDatabase.PQuery("SELECT guid FROM group_member WHERE memberGuid=%u", GetGUIDLow());
@@ -19253,7 +19236,7 @@ void Player::SaveToDB(bool create /*=false*/)
 
     // TODO: Move this out
     trans = LoginDatabase.BeginTransaction();
-    GetSession()->SaveAccountToys(trans);
+    GetSession()->GetCollectionMgr()->SaveAccountToys(trans);
     GetSession()->GetBattlePetMgr()->SaveToDB(trans);
     LoginDatabase.CommitTransaction(trans);
 
@@ -21098,6 +21081,7 @@ bool Player::ActivateTaxiPathTo(std::vector<uint32> const& nodes, Creature* npc 
     // fill destinations path tail
     uint32 sourcepath = 0;
     uint32 totalcost = 0;
+    uint32 firstcost = 0;
 
     uint32 prevnode = sourcenode;
     uint32 lastnode = 0;
@@ -21116,6 +21100,9 @@ bool Player::ActivateTaxiPathTo(std::vector<uint32> const& nodes, Creature* npc 
         }
 
         totalcost += cost;
+		
+        if (i == 1)
+            firstcost = cost;
 
         if (prevnode == sourcenode)
             sourcepath = path;
@@ -21154,8 +21141,6 @@ bool Player::ActivateTaxiPathTo(std::vector<uint32> const& nodes, Creature* npc 
     }
 
     //Checks and preparations done, DO FLIGHT
-    ModifyMoney(-int64(totalcost));
-    UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_GOLD_SPENT_FOR_TRAVELLING, totalcost);
     UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_FLIGHT_PATHS_TAKEN, 1);
 
     // prevent stealth flight
@@ -21166,11 +21151,15 @@ bool Player::ActivateTaxiPathTo(std::vector<uint32> const& nodes, Creature* npc 
         TaxiNodesEntry const* lastPathNode = sTaxiNodesStore.LookupEntry(nodes[nodes.size()-1]);
         ASSERT(lastPathNode);
         m_taxi.ClearTaxiDestinations();
+        ModifyMoney(-int64(totalcost));
+        UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_GOLD_SPENT_FOR_TRAVELLING, totalcost);
         TeleportTo(lastPathNode->MapID, lastPathNode->Pos.X, lastPathNode->Pos.Y, lastPathNode->Pos.Z, GetOrientation());
         return false;
     }
     else
     {
+        ModifyMoney(-int64(firstcost));
+        UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_GOLD_SPENT_FOR_TRAVELLING, firstcost);
         GetSession()->SendActivateTaxiReply(ERR_TAXIOK);
         GetSession()->SendDoFlight(mount_display_id, sourcepath);
     }
@@ -21221,30 +21210,30 @@ void Player::ContinueTaxiFlight()
 
     float distPrev = MAP_SIZE*MAP_SIZE;
     float distNext =
-        (nodeList[0].Loc.X-GetPositionX())*(nodeList[0].Loc.X-GetPositionX())+
-        (nodeList[0].Loc.Y-GetPositionY())*(nodeList[0].Loc.Y-GetPositionY())+
-        (nodeList[0].Loc.Z-GetPositionZ())*(nodeList[0].Loc.Z-GetPositionZ());
+        (nodeList[0]->Loc.X - GetPositionX())*(nodeList[0]->Loc.X - GetPositionX()) +
+        (nodeList[0]->Loc.Y - GetPositionY())*(nodeList[0]->Loc.Y - GetPositionY()) +
+        (nodeList[0]->Loc.Z - GetPositionZ())*(nodeList[0]->Loc.Z - GetPositionZ());
 
     for (uint32 i = 1; i < nodeList.size(); ++i)
     {
-        TaxiPathNodeEntry const& node = nodeList[i];
-        TaxiPathNodeEntry const& prevNode = nodeList[i-1];
+        TaxiPathNodeEntry const* node = nodeList[i];
+        TaxiPathNodeEntry const* prevNode = nodeList[i-1];
 
         // skip nodes at another map
-        if (node.MapID != GetMapId())
+        if (node->MapID != GetMapId())
             continue;
 
         distPrev = distNext;
 
         distNext =
-            (node.Loc.X-GetPositionX())*(node.Loc.X-GetPositionX())+
-            (node.Loc.Y-GetPositionY())*(node.Loc.Y-GetPositionY())+
-            (node.Loc.Z-GetPositionZ())*(node.Loc.Z-GetPositionZ());
+            (node->Loc.X - GetPositionX()) * (node->Loc.X - GetPositionX()) +
+            (node->Loc.Y - GetPositionY()) * (node->Loc.Y - GetPositionY()) +
+            (node->Loc.Z - GetPositionZ()) * (node->Loc.Z - GetPositionZ());
 
         float distNodes =
-            (node.Loc.X-prevNode.Loc.X)*(node.Loc.X-prevNode.Loc.X)+
-            (node.Loc.Y-prevNode.Loc.Y)*(node.Loc.Y-prevNode.Loc.Y)+
-            (node.Loc.Z-prevNode.Loc.Z)*(node.Loc.Z-prevNode.Loc.Z);
+            (node->Loc.X - prevNode->Loc.X) * (node->Loc.X - prevNode->Loc.X) +
+            (node->Loc.Y - prevNode->Loc.Y) * (node->Loc.Y - prevNode->Loc.Y) +
+            (node->Loc.Z - prevNode->Loc.Z) * (node->Loc.Z - prevNode->Loc.Z);
 
         if (distNext + distPrev < distNodes)
         {
@@ -22700,7 +22689,7 @@ void Player::SendInitialPacketsBeforeAddToMap()
     // SMSG_ACCOUNT_TOYS_UPDATE
     WorldPackets::Toy::AccountToysUpdate toysUpdate;
     toysUpdate.IsFullUpdate = true;
-    toysUpdate.Toys = &GetSession()->GetAccountToys();
+    toysUpdate.Toys = &GetSession()->GetCollectionMgr()->GetAccountToys();
     SendDirectMessage(toysUpdate.Write());
 
     WorldPackets::Character::InitialSetup initialSetup;

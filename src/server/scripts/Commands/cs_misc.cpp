@@ -1796,7 +1796,7 @@ public:
         if (result6)
         {
             Field* fields         = result6->Fetch();
-            uint32 readmail		  = uint32(fields[0].GetDouble());
+            uint32 readmail       = uint32(fields[0].GetDouble());
             uint32 totalmail      = uint32(fields[1].GetUInt64());
 
             // Output XXI. LANG_INFO_CHR_MAILS if at least one mail is given

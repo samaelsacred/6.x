@@ -25,11 +25,10 @@
 
 /**
     @class Field
-	
+
     @brief Class used to access individual fields of database query result
-	
+
     Guideline on field type matching:
-	
     |   MySQL type           |  method to use                         |
     |------------------------|----------------------------------------|
     | TINYINT                | GetBool, GetInt8, GetUInt8             |
@@ -44,9 +43,9 @@
     | TINYBLOB, MEDIUMBLOB,  | GetBinary, GetString                   |
     | BLOB, LONGBLOB         | GetBinary, GetString                   |
     | BINARY, VARBINARY      | GetBinary                              |
-	
+
     Return types of aggregate functions:
-	
+
     | Function |       Type        |
     |----------|-------------------|
     | MIN, MAX | Same as the field |

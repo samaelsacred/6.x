@@ -529,10 +529,7 @@ void WorldSession::HandleCharCreateCallback(PreparedQueryResult result, WorldPac
             if (result)
             {
                 Field* fields = result->Fetch();
-                // SELECT SUM(x) is MYSQL_TYPE_NEWDECIMAL - needs to be read as string
-                const char* ch = fields[0].GetCString();
-                if (ch)
-                    acctCharCount = uint64(fields[0].GetDouble());
+                acctCharCount = uint64(fields[0].GetDouble());
             }
 
             if (acctCharCount >= sWorld->getIntConfig(CONFIG_CHARACTERS_PER_ACCOUNT))

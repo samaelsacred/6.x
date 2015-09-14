@@ -762,8 +762,8 @@ struct ItemTemplate
 	bool IsRangedGetInventoryType() const
 	{
 		return GetInventoryType() == INVTYPE_RANGED ||
-			   GetInventoryType() == INVTYPE_THROWN ||
-			   GetInventoryType() == INVTYPE_RANGEDRIGHT;
+                       GetInventoryType() == INVTYPE_THROWN ||
+		       GetInventoryType() == INVTYPE_RANGEDRIGHT;
 	}
 	
     char const* GetDefaultLocaleName() const;

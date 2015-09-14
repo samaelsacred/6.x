@@ -1129,6 +1129,8 @@ class PlayerTaxi
             m_TaxiDestinations.pop_front();
             return GetTaxiDestination();
         }
+
+        std::deque<uint32> const& GetPath() const { return m_TaxiDestinations; }
         bool empty() const { return m_TaxiDestinations.empty(); }
 
         friend std::ostringstream& operator<< (std::ostringstream& ss, PlayerTaxi const& taxi);
@@ -2629,9 +2631,6 @@ class Player : public Unit, public GridObject<Player>
         bool SwapVoidStorageItem(uint8 oldSlot, uint8 newSlot);
         VoidStorageItem* GetVoidStorageItem(uint8 slot) const;
         VoidStorageItem* GetVoidStorageItem(uint64 id, uint8& slot) const;
-
-        bool AddToy(uint32 itemId, bool isFavourite /*= false*/);
-
         void OnCombatExit();
 
         void CreateGarrison(uint32 garrSiteId);
@@ -2709,7 +2708,6 @@ class Player : public Unit, public GridObject<Player>
         void _LoadGroup(PreparedQueryResult result);
         void _LoadSkills(PreparedQueryResult result);
         void _LoadSpells(PreparedQueryResult result);
-        void _LoadToys(ToyBoxContainer const& toys);
         void _LoadFriendList(PreparedQueryResult result);
         bool _LoadHomeBind(PreparedQueryResult result);
         void _LoadDeclinedNames(PreparedQueryResult result);
